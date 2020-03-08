@@ -39,7 +39,8 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   if (!nh_private_.getParam ("stateless", stateless_))
     stateless_ = false;
   if (!nh_private_.getParam ("use_mag", use_mag_))
-   use_mag_ = true;
+   use_mag_ = false;
+   //use_mag_ = true;
   if (!nh_private_.getParam ("publish_tf", publish_tf_))
    publish_tf_ = true;
   if (!nh_private_.getParam ("reverse_tf", reverse_tf_))
@@ -119,8 +120,12 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   // Synchronize inputs. Topic subscriptions happen on demand in the connection callback.
   int queue_size = 5;
 
+  //imu_subscriber_.reset(new ImuSubscriber(
+  //  nh_, ros::names::resolve("imu") + "/data_raw", queue_size));
+
   imu_subscriber_.reset(new ImuSubscriber(
-    nh_, ros::names::resolve("imu") + "/data_raw", queue_size));
+    nh_, "/mynteye/imu/data_raw", queue_size));
+
 
   if (use_mag_)
   {
@@ -149,6 +154,9 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   }
   else
   {
+    //jw
+    ROS_WARN_STREAM("Enter the imuCallback ");
+
     imu_subscriber_->registerCallback(&ImuFilterRos::imuCallback, this);
   }
 
@@ -321,11 +329,17 @@ void ImuFilterRos::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
   // create and publish filtered IMU message
   boost::shared_ptr<ImuMsg> imu_msg =
     boost::make_shared<ImuMsg>(*imu_msg_raw);
-
+    /*
+    jw
   imu_msg->orientation.w = q0;
   imu_msg->orientation.x = q1;
   imu_msg->orientation.y = q2;
   imu_msg->orientation.z = q3;
+*/
+  imu_msg->orientation.w = q0;
+  imu_msg->orientation.x = q1;
+  imu_msg->orientation.y = q3;
+  imu_msg->orientation.z = -q2;
 
   imu_msg->orientation_covariance[0] = orientation_variance_;
   imu_msg->orientation_covariance[1] = 0.0;
@@ -391,8 +405,11 @@ void ImuFilterRos::imuMagVectorCallback(const MagVectorMsg::ConstPtr& mag_vector
 void ImuFilterRos::checkTopicsTimerCallback(const ros::TimerEvent&)
 {
   if (use_mag_)
-    ROS_WARN_STREAM("Still waiting for data on topics " << ros::names::resolve("imu") << "/data_raw"
+    //ROS_WARN_STREAM("Still waiting for data on topics " << ros::names::resolve("imu") << "/data_raw"
+    //                << " and " << ros::names::resolve("imu") << "/mag" << "...");
+    ROS_WARN_STREAM("Still waiting for data on topics " << "/mynteye/imu" << "/data_raw"
                     << " and " << ros::names::resolve("imu") << "/mag" << "...");
   else
-    ROS_WARN_STREAM("Still waiting for data on topic " << ros::names::resolve("imu") << "/data_raw" << "...");
+    //ROS_WARN_STREAM("Still waiting for data on topic " << ros::names::resolve("imu") << "/data_raw" << "...");
+    ROS_WARN_STREAM("Still waiting for data on topic " << "/mynteye/imu" << "/data_raw" << "...");
 }
