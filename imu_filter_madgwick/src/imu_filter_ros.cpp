@@ -39,10 +39,11 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   if (!nh_private_.getParam ("stateless", stateless_))
     stateless_ = false;
   if (!nh_private_.getParam ("use_mag", use_mag_))
+   //use_mag_ = false;
    use_mag_ = false;
-   //use_mag_ = true;
   if (!nh_private_.getParam ("publish_tf", publish_tf_))
    publish_tf_ = true;
+
   if (!nh_private_.getParam ("reverse_tf", reverse_tf_))
    reverse_tf_ = false;
   if (!nh_private_.getParam ("fixed_frame", fixed_frame_))
@@ -66,7 +67,7 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   std::string world_frame;
   // Default should become false for next release
   if (!nh_private_.getParam ("world_frame", world_frame)) {
-    world_frame = "nwu";
+    world_frame = "enu";
     ROS_WARN("Deprecation Warning: The parameter world_frame was not set, default is 'nwu'.");
     ROS_WARN("Starting with ROS Lunar, world_frame will default to 'enu'!");
   }
@@ -155,7 +156,7 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   else
   {
     //jw
-    ROS_WARN_STREAM("Enter the imuCallback ");
+    //ROS_INFO("Enter the imuCallback ");
 
     imu_subscriber_->registerCallback(&ImuFilterRos::imuCallback, this);
   }
@@ -175,8 +176,40 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
 {
   boost::mutex::scoped_lock lock(mutex_);
 
+  boost::shared_ptr<ImuMsg> imu_msg_temp =
+    boost::make_shared<ImuMsg>(*imu_msg_raw);
+
+//  geometry_msgs::Vector3 ang_vel_temp, lin_acc_temp;
+
+  imu_msg_temp->angular_velocity.x = -imu_msg_raw->angular_velocity.z;
+  imu_msg_temp->angular_velocity.y = -imu_msg_raw->angular_velocity.x;
+  imu_msg_temp->angular_velocity.z = imu_msg_raw->angular_velocity.y;
+
+  imu_msg_temp->linear_acceleration.x = -imu_msg_raw->linear_acceleration.z;
+  imu_msg_temp->linear_acceleration.y = -imu_msg_raw->linear_acceleration.x;
+  imu_msg_temp->linear_acceleration.z = imu_msg_raw->linear_acceleration.y;
+
+
+  const geometry_msgs::Vector3& ang_vel = imu_msg_temp->angular_velocity;
+  const geometry_msgs::Vector3& lin_acc = imu_msg_temp->linear_acceleration;
+
+
+  /*
+  ang_vel_temp.x = imu_msg_raw->angular_velocity.x;
+  ang_vel_temp.y = imu_msg_raw->angular_velocity.y;
+  ang_vel_temp.z = imu_msg_raw->angular_velocity.z;
+  lin_acc_temp.x = imu_msg_raw->linear_acceleration.x;
+  lin_acc_temp.y = imu_msg_raw->linear_acceleration.y;
+  lin_acc_temp.z = imu_msg_raw->linear_acceleration.z;
+*/
+/*
   const geometry_msgs::Vector3& ang_vel = imu_msg_raw->angular_velocity;
   const geometry_msgs::Vector3& lin_acc = imu_msg_raw->linear_acceleration;
+*/
+/*
+  const geometry_msgs::Vector3& ang_vel = ang_vel_temp;
+  const geometry_msgs::Vector3& lin_acc = lin_acc_temp;
+*/
 
   ros::Time time = imu_msg_raw->header.stamp;
   imu_frame_ = imu_msg_raw->header.frame_id;
@@ -212,10 +245,14 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
       ang_vel.x, ang_vel.y, ang_vel.z,
       lin_acc.x, lin_acc.y, lin_acc.z,
       dt);
-
+/*
   publishFilteredMsg(imu_msg_raw);
   if (publish_tf_)
     publishTransform(imu_msg_raw);
+    */
+    publishFilteredMsg(imu_msg_temp);
+    if (publish_tf_)
+      publishTransform(imu_msg_temp);
 }
 
 void ImuFilterRos::imuMagCallback(
@@ -288,7 +325,7 @@ void ImuFilterRos::imuMagCallback(
     geometry_msgs::Quaternion orientation;
     if (StatelessOrientation::computeOrientation(world_frame_, lin_acc, mag_compensated, orientation))
     {
-      tf2::Matrix3x3(tf2::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w)).getRPY(roll, pitch, yaw, 0);
+      tf2::Matrix3x3(tf2::Quaternion(orientation.z, orientation.x, orientation.y, orientation.w)).getRPY(roll, pitch, yaw, 0);
       publishRawMsg(time, roll, pitch, yaw);
     }
   }
@@ -313,9 +350,9 @@ void ImuFilterRos::publishTransform(const ImuMsg::ConstPtr& imu_msg_raw)
     transform.header.frame_id = fixed_frame_;
     transform.child_frame_id = imu_frame_;
     transform.transform.rotation.w = q0;
-    transform.transform.rotation.x = q1;
-    transform.transform.rotation.y = q2;
-    transform.transform.rotation.z = q3;
+    transform.transform.rotation.x = q3;
+    transform.transform.rotation.y = q1;
+    transform.transform.rotation.z = q2;
   }
   tf_broadcaster_.sendTransform(transform);
 
@@ -329,18 +366,18 @@ void ImuFilterRos::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
   // create and publish filtered IMU message
   boost::shared_ptr<ImuMsg> imu_msg =
     boost::make_shared<ImuMsg>(*imu_msg_raw);
-    /*
-    jw
+
   imu_msg->orientation.w = q0;
   imu_msg->orientation.x = q1;
   imu_msg->orientation.y = q2;
   imu_msg->orientation.z = q3;
-*/
+
+/*
   imu_msg->orientation.w = q0;
   imu_msg->orientation.x = q1;
   imu_msg->orientation.y = q3;
   imu_msg->orientation.z = -q2;
-
+*/
   imu_msg->orientation_covariance[0] = orientation_variance_;
   imu_msg->orientation_covariance[1] = 0.0;
   imu_msg->orientation_covariance[2] = 0.0;
