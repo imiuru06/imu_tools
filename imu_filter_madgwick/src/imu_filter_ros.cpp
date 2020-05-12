@@ -179,8 +179,6 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
   boost::shared_ptr<ImuMsg> imu_msg_temp =
     boost::make_shared<ImuMsg>(*imu_msg_raw);
 
-//  geometry_msgs::Vector3 ang_vel_temp, lin_acc_temp;
-
   imu_msg_temp->angular_velocity.x = -imu_msg_raw->angular_velocity.z;
   imu_msg_temp->angular_velocity.y = -imu_msg_raw->angular_velocity.x;
   imu_msg_temp->angular_velocity.z = imu_msg_raw->angular_velocity.y;
