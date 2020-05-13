@@ -371,26 +371,19 @@ void ImuFilterRos::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
   boost::shared_ptr<ImuMsg> imu_msg =
     boost::make_shared<ImuMsg>(*imu_msg_raw);
 
-<<<<<<< HEAD
-  // jw
-=======
->>>>>>> 50bea4e1f0982251f694303d87099d4421951524
   imu_msg->orientation.w = q0;
   imu_msg->orientation.x = q1;
   imu_msg->orientation.y = q2;
   imu_msg->orientation.z = q3;
 
-<<<<<<< HEAD
 
-
-=======
 /*
   imu_msg->orientation.w = q0;
   imu_msg->orientation.x = q1;
   imu_msg->orientation.y = q3;
   imu_msg->orientation.z = -q2;
 */
->>>>>>> 50bea4e1f0982251f694303d87099d4421951524
+
   imu_msg->orientation_covariance[0] = orientation_variance_;
   imu_msg->orientation_covariance[1] = 0.0;
   imu_msg->orientation_covariance[2] = 0.0;
