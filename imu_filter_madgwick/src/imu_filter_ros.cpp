@@ -39,7 +39,7 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   if (!nh_private_.getParam ("stateless", stateless_))
     stateless_ = false;
   if (!nh_private_.getParam ("use_mag", use_mag_))
-   use_mag_ = true;
+   use_mag_ = false;
   if (!nh_private_.getParam ("publish_tf", publish_tf_))
    publish_tf_ = true;
   if (!nh_private_.getParam ("reverse_tf", reverse_tf_))
@@ -65,7 +65,7 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   std::string world_frame;
   // Default should become false for next release
   if (!nh_private_.getParam ("world_frame", world_frame)) {
-    world_frame = "nwu";
+    world_frame = "enu";
     ROS_WARN("Deprecation Warning: The parameter world_frame was not set, default is 'nwu'.");
     ROS_WARN("Starting with ROS Lunar, world_frame will default to 'enu'!");
   }
@@ -118,9 +118,14 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private):
   // **** register subscribers
   // Synchronize inputs. Topic subscriptions happen on demand in the connection callback.
   int queue_size = 5;
+/*
+  imu_subscriber_.reset(new ImuSubscriber(
+    nh_, "/mynteye" + ros::names::resolve("imu") + "/data_raw" + "_processed", queue_size));
+*/
 
   imu_subscriber_.reset(new ImuSubscriber(
-    nh_, ros::names::resolve("imu") + "/data_raw", queue_size));
+    nh_, "/mynteye" + ros::names::resolve("imu") + "/data_raw" + "_processed", queue_size));
+
 
   if (use_mag_)
   {
@@ -167,9 +172,27 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
 {
   boost::mutex::scoped_lock lock(mutex_);
 
+  boost::shared_ptr<ImuMsg> imu_msg_temp =
+    boost::make_shared<ImuMsg>(*imu_msg_raw);
+
+  imu_msg_temp->angular_velocity.x = -imu_msg_raw->angular_velocity.z;
+  imu_msg_temp->angular_velocity.y = -imu_msg_raw->angular_velocity.x;
+  imu_msg_temp->angular_velocity.z = -imu_msg_raw->angular_velocity.y;
+
+  imu_msg_temp->linear_acceleration.x = -imu_msg_raw->linear_acceleration.z;
+  imu_msg_temp->linear_acceleration.y = -imu_msg_raw->linear_acceleration.x;
+  imu_msg_temp->linear_acceleration.z = -imu_msg_raw->linear_acceleration.y;
+
+
+  const geometry_msgs::Vector3& ang_vel = imu_msg_temp->angular_velocity;
+  const geometry_msgs::Vector3& lin_acc = imu_msg_temp->linear_acceleration;
+
+
+
+/*
   const geometry_msgs::Vector3& ang_vel = imu_msg_raw->angular_velocity;
   const geometry_msgs::Vector3& lin_acc = imu_msg_raw->linear_acceleration;
-
+*/
   ros::Time time = imu_msg_raw->header.stamp;
   imu_frame_ = imu_msg_raw->header.frame_id;
 
@@ -205,9 +228,14 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
       lin_acc.x, lin_acc.y, lin_acc.z,
       dt);
 
-  publishFilteredMsg(imu_msg_raw);
+      /*
+        publishFilteredMsg(imu_msg_raw);
+        if (publish_tf_)
+          publishTransform(imu_msg_raw);
+          */
+  publishFilteredMsg(imu_msg_temp);
   if (publish_tf_)
-    publishTransform(imu_msg_raw);
+    publishTransform(imu_msg_temp);
 }
 
 void ImuFilterRos::imuMagCallback(
@@ -391,8 +419,8 @@ void ImuFilterRos::imuMagVectorCallback(const MagVectorMsg::ConstPtr& mag_vector
 void ImuFilterRos::checkTopicsTimerCallback(const ros::TimerEvent&)
 {
   if (use_mag_)
-    ROS_WARN_STREAM("Still waiting for data on topics " << ros::names::resolve("imu") << "/data_raw"
+    ROS_WARN_STREAM("Still waiting for data on topics " << "/mynteye" << ros::names::resolve("imu") << "/data_raw"
                     << " and " << ros::names::resolve("imu") << "/mag" << "...");
   else
-    ROS_WARN_STREAM("Still waiting for data on topic " << ros::names::resolve("imu") << "/data_raw" << "...");
+    ROS_WARN_STREAM("Still waiting for data on topic " << "/mynteye" << ros::names::resolve("imu") << "/data_raw" << "...");
 }
