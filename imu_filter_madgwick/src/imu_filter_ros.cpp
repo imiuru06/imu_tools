@@ -181,11 +181,11 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
 
   imu_msg_temp->angular_velocity.x = -imu_msg_raw->angular_velocity.z;
   imu_msg_temp->angular_velocity.y = -imu_msg_raw->angular_velocity.x;
-  imu_msg_temp->angular_velocity.z = imu_msg_raw->angular_velocity.y;
+  imu_msg_temp->angular_velocity.z = -imu_msg_raw->angular_velocity.y;
 
   imu_msg_temp->linear_acceleration.x = -imu_msg_raw->linear_acceleration.z;
   imu_msg_temp->linear_acceleration.y = -imu_msg_raw->linear_acceleration.x;
-  imu_msg_temp->linear_acceleration.z = imu_msg_raw->linear_acceleration.y;
+  imu_msg_temp->linear_acceleration.z = -imu_msg_raw->linear_acceleration.y;
 
 
   const geometry_msgs::Vector3& ang_vel = imu_msg_temp->angular_velocity;
